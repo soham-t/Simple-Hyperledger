@@ -1,0 +1,74 @@
+Profiles:
+
+    FourOrgOrdererGenesis:
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *OrdererOrg
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *Seller
+                    - *Buyer
+                    - *MarketPlace
+                    - *Logistics
+    FourOrgChannel:
+        Consortium: SampleConsortium
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *Seller
+                - *Buyer
+                - *MarketPlace
+                - *Logistics
+Organizations:
+
+    - &OrdererOrg
+        Name: OrdererOrg
+        ID: OrdererMSP
+        MSPDir: crypto-config/ordererOrganizations/om.com/msp
+    - &Seller
+        Name: SellerMSP
+        ID: SellerMSP
+        MSPDir: crypto-config/peerOrganizations/seller.om.com/msp
+        AnchorPeers:
+            - Host: peer0.seller.om.com
+              Port: 7051
+    - &Buyer
+        Name: BuyerMSP
+        ID: BuyerMSP
+        MSPDir: crypto-config/peerOrganizations/buyer.om.com/msp
+        AnchorPeers:
+            - Host: peer0.buyer.om.com
+              Port: 7052
+    - &MarketPlace
+        Name: MarketPlaceMSP
+        ID: MarketPlaceMSP
+        MSPDir: crypto-config/peerOrganizations/marketplace.om.com/msp
+        AnchorPeers:
+            - Host: peer0.marketplace.om.com
+              Port: 7053
+    - &Logistics
+        Name: LogisticsMSP
+        ID: LogisticsMSP
+        MSPDir: crypto-config/peerOrganizations/logistics.om.com/msp
+        AnchorPeers:
+            - Host: peer0.logistics.om.com
+              Port: 7054
+Orderer: &OrdererDefaults
+
+    OrdererType: solo
+    Addresses:
+        - orderer.om.com:7050
+    BatchTimeout: 2s
+    BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 99 MB
+        PreferredMaxBytes: 512 KB
+
+    Kafka:
+        Brokers:
+            - 127.0.0.1:9092
+    Organizations:
+Application: &ApplicationDefaults
+    Organizations:

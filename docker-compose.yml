@@ -1,0 +1,323 @@
+#
+# Copyright IBM Corp All Rights Reserved
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+version: '2'
+
+networks:
+  basic:
+
+services:
+  ca.seller.om.com:
+    image: hyperledger/fabric-ca
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca.seller.om.com
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.seller.om.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/0371144fb00dceab9bde0a864e6116587c1b3f91db76cb562c2e4949321022b8_sk
+    ports:
+      - "8054:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ./crypto-config/peerOrganizations/seller.om.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca.seller.om.com
+    networks:
+      - basic
+  ca.buyer.om.com:
+    image: hyperledger/fabric-ca
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca.buyer.om.com
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.buyer.om.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/7147fbfcc8ee1fb97177ec36e787db16b072a4a230991ebb4cfadd286f389f6f_sk
+    ports:
+      - "8055:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ./crypto-config/peerOrganizations/buyer.om.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca.buyer.om.com
+    networks:
+      - basic
+  ca.marketplace.om.com:
+    image: hyperledger/fabric-ca
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca.marketplace.om.com
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.marketplace.om.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/1077b0ecd30c66bd890b663df6676f4edddd59f35de9a43e5ad39876aa67ff62_sk
+    ports:
+      - "8056:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ./crypto-config/peerOrganizations/marketplace.om.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca.marketplace.om.com
+    networks:
+      - basic
+  ca.logistics.om.com:
+    image: hyperledger/fabric-ca
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca.logistics.om.com
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.logistics.om.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/555a439b3147671d1064712ae7d93f028578bebd0258d876ef3acecdfa9b4d84_sk
+    ports:
+      - "8057:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ./crypto-config/peerOrganizations/logistics.om.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca.logistics.om.com
+    networks:
+      - basic
+
+  orderer.om.com:
+    container_name: orderer.om.com
+    image: hyperledger/fabric-orderer
+    environment:
+      - ORDERER_GENERAL_LOGLEVEL=debug
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/etc/hyperledger/configtx/genesis.block
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/etc/hyperledger/msp/orderer/msp
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/orderer
+    command: orderer
+    ports:
+      - 7050:7050
+    volumes:
+        - ./config/:/etc/hyperledger/configtx
+        - ./crypto-config/ordererOrganizations/om.com/orderers/orderer.om.com/:/etc/hyperledger/msp/orderer
+        - ./crypto-config/peerOrganizations/seller.om.com/peers/peer0.seller.om.com/:/etc/hyperledger/msp/peerseller
+        - ./crypto-config/peerOrganizations/buyer.om.com/peers/peer0.buyer.om.com/:/etc/hyperledger/msp/peerbuyer
+        - ./crypto-config/peerOrganizations/marketplacer.om.com/peers/peer0.marketplace.om.com/:/etc/hyperledger/msp/peermarketplace
+        - ./crypto-config/peerOrganizations/logistics.om.com/peers/peer0.logistics.om.com/:/etc/hyperledger/msp/peerlogistics
+    networks:
+      - basic
+
+  peer0.seller.om.com:
+    container_name: peer0.seller.om.com
+    image: hyperledger/fabric-peer
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_PEER_ID=peer0.seller.om.com
+      - CORE_LOGGING_PEER=debug
+      - CORE_CHAINCODE_LOGGING_LEVEL=DEBUG
+      - CORE_PEER_LOCALMSPID=SellerMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/peer/
+      - CORE_PEER_ADDRESS=peer0.seller.om.com:7051
+      # # the following setting starts chaincode containers on the same
+      # # bridge network as the peers
+      # # https://docs.docker.com/compose/networking/
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${COMPOSE_PROJECT_NAME}_basic
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.seller:5984
+      # The CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME and CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD
+      # provide the credentials for ledger to connect to CouchDB.  The username and password must
+      # match the username and password set for the associated CouchDB.
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: peer node start
+    # command: peer node start --peer-chaincodedev=true
+    ports:
+      - 7051:7051
+      - 9053:7053
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/seller.om.com/peers/peer0.seller.om.com/msp:/etc/hyperledger/msp/peer
+        - ./crypto-config/peerOrganizations/seller.om.com/users:/etc/hyperledger/msp/users
+        - ./config:/etc/hyperledger/configtx
+    depends_on:
+      - orderer.om.com
+      - couchdb.seller
+    networks:
+      - basic
+  couchdb.seller:
+    container_name: couchdb.seller
+    image: hyperledger/fabric-couchdb
+    # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
+    # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.
+    environment:
+      - COUCHDB_USER=
+      - COUCHDB_PASSWORD=
+    ports:
+      - 5984:5984
+    networks:
+      - basic
+  peer0.buyer.om.com:
+    container_name: peer0.buyer.om.com
+    image: hyperledger/fabric-peer
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_PEER_ID=peer0.buyer.om.com
+      - CORE_LOGGING_PEER=debug
+      - CORE_CHAINCODE_LOGGING_LEVEL=DEBUG
+      - CORE_PEER_LOCALMSPID=BuyerMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/peer/
+      - CORE_PEER_ADDRESS=peer0.buyer.om.com:7051
+      # # the following setting starts chaincode containers on the same
+      # # bridge network as the peers
+      # # https://docs.docker.com/compose/networking/
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${COMPOSE_PROJECT_NAME}_basic
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.buyer:5984
+      # The CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME and CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD
+      # provide the credentials for ledger to connect to CouchDB.  The username and password must
+      # match the username and password set for the associated CouchDB.
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: peer node start
+    # command: peer node start --peer-chaincodedev=true
+    ports:
+      - 7052:7051
+      - 9054:7053
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/buyer.om.com/peers/peer0.buyer.om.com/msp:/etc/hyperledger/msp/peer
+        - ./crypto-config/peerOrganizations/buyer.om.com/users:/etc/hyperledger/msp/users
+        - ./config:/etc/hyperledger/configtx
+    depends_on:
+      - orderer.om.com
+      - couchdb.buyer
+    networks:
+      - basic
+  couchdb.buyer:
+    container_name: couchdb.buyer
+    image: hyperledger/fabric-couchdb
+    # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
+    # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.
+    environment:
+      - COUCHDB_USER=
+      - COUCHDB_PASSWORD=
+    ports:
+      - 5985:5984
+    networks:
+      - basic
+  peer0.marketplace.om.com:
+    container_name: peer0.marketplace.om.com
+    image: hyperledger/fabric-peer
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_PEER_ID=peer0.marketplace.om.com
+      - CORE_LOGGING_PEER=debug
+      - CORE_CHAINCODE_LOGGING_LEVEL=DEBUG
+      - CORE_PEER_LOCALMSPID=MarketplaceMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/peer/
+      - CORE_PEER_ADDRESS=peer0.marketplace.om.com:7051
+      # # the following setting starts chaincode containers on the same
+      # # bridge network as the peers
+      # # https://docs.docker.com/compose/networking/
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${COMPOSE_PROJECT_NAME}_basic
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.marketplace:5984
+      # The CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME and CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD
+      # provide the credentials for ledger to connect to CouchDB.  The username and password must
+      # match the username and password set for the associated CouchDB.
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: peer node start
+    # command: peer node start --peer-chaincodedev=true
+    ports:
+      - 7053:7051
+      - 9055:7053
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/marketplace.om.com/peers/peer0.marketplace.om.com/msp:/etc/hyperledger/msp/peer
+        - ./crypto-config/peerOrganizations/marketplace.om.com/users:/etc/hyperledger/msp/users
+        - ./config:/etc/hyperledger/configtx
+    depends_on:
+      - orderer.om.com
+      - couchdb.marketplace
+    networks:
+      - basic
+  couchdb.marketplace:
+    container_name: couchdb.marketplace
+    image: hyperledger/fabric-couchdb
+    # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
+    # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.
+    environment:
+      - COUCHDB_USER=
+      - COUCHDB_PASSWORD=
+    ports:
+      - 5986:5984
+    networks:
+      - basic
+  peer0.logistics.om.com:
+    container_name: peer0.logistics.om.com
+    image: hyperledger/fabric-peer
+    environment:
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_PEER_ID=peer0.logistics.om.com
+      - CORE_LOGGING_PEER=debug
+      - CORE_CHAINCODE_LOGGING_LEVEL=DEBUG
+      - CORE_PEER_LOCALMSPID=LogisticsMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/peer/
+      - CORE_PEER_ADDRESS=peer0.logistics.om.com:7051
+      # # the following setting starts chaincode containers on the same
+      # # bridge network as the peers
+      # # https://docs.docker.com/compose/networking/
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${COMPOSE_PROJECT_NAME}_basic
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.logistics:5984
+      # The CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME and CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD
+      # provide the credentials for ledger to connect to CouchDB.  The username and password must
+      # match the username and password set for the associated CouchDB.
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: peer node start
+    # command: peer node start --peer-chaincodedev=true
+    ports:
+      - 7054:7051
+      - 9056:7053
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./crypto-config/peerOrganizations/logistics.om.com/peers/peer0.logistics.om.com/msp:/etc/hyperledger/msp/peer
+        - ./crypto-config/peerOrganizations/logistics.om.com/users:/etc/hyperledger/msp/users
+        - ./config:/etc/hyperledger/configtx
+    depends_on:
+      - orderer.om.com
+      - couchdb.logistics
+    networks:
+      - basic
+  couchdb.logistics:
+    container_name: couchdb.logistics
+    image: hyperledger/fabric-couchdb
+    # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
+    # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.
+    environment:
+      - COUCHDB_USER=
+      - COUCHDB_PASSWORD=
+    ports:
+      - 5987:5984
+    networks:
+      - basic
+
+  cli:
+    container_name: cli
+    image: hyperledger/fabric-tools
+    tty: true
+    environment:
+      - GOPATH=/opt/gopath
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_LOGGING_LEVEL=DEBUG
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ADDRESS=peer0.seller.om.com:7051
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/seller.om.com/users/Admin@seller.om.com/msp
+      - CORE_CHAINCODE_KEEPALIVE=10
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: /bin/bash
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./../chaincode/:/opt/gopath/src/github.com/
+        - ./crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
+        - ./config:/etc/hyperledger/configtx
+    networks:
+        - basic
+    #depends_on:
+    #  - orderer.example.com
+    #  - peer0.org1.example.com
+    #  - couchdb
